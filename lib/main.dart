@@ -19,8 +19,12 @@ class RiderTrackingApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => TripProvider()..init(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (_) => TripProvider()..init(),
+        ),
+      ],
       child: MaterialApp(
         title: 'Rider Tracking',
         debugShowCheckedModeBanner: false,
