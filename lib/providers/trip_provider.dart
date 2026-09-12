@@ -31,11 +31,7 @@ class TripProvider extends ChangeNotifier {
   bool _isSyncing = false;
   int _pendingSyncCount = 0;
   bool _isProcessing = false;
-  bool _isRecoveredTrip = false;
   String? _errorMessage;
-  String? _lastRejectionReason;
-
-  List<TripModel> _completedTrips = [];
 
   TripModel? get currentTrip => _currentTrip;
   LocationPoint? get lastValidLocation => _lastValidLocation;
@@ -45,19 +41,12 @@ class TripProvider extends ChangeNotifier {
   bool get isSyncing => _isSyncing;
   int get pendingSyncCount => _pendingSyncCount;
   bool get isProcessing => _isProcessing;
-  bool get isRecoveredTrip => _isRecoveredTrip;
   String? get errorMessage => _errorMessage;
-  String? get lastRejectionReason => _lastRejectionReason;
-  List<TripModel> get completedTrips => _completedTrips;
-  bool get isFirebaseAvailable => _firebaseService.isAvailable;
 
   double get currentSpeed => _currentTrip?.currentSpeed ?? 0.0;
   double get maxSpeed => _currentTrip?.maxSpeed ?? 0.0;
   double get totalDistanceKm =>
       (_currentTrip != null) ? (_currentTrip!.totalDistance / 1000.0) : 0.0;
-  double get totalDistanceMeters => _currentTrip?.totalDistance ?? 0.0;
-  int get acceptedPointsCount => _currentTrip?.totalLocations ?? 0;
-  int get rejectedPointsCount => _currentTrip?.rejectedLocations ?? 0;
 
   Future<void> init() async {
     _isOnline = await _connectivityService.isConnected();
@@ -71,8 +60,7 @@ class TripProvider extends ChangeNotifier {
     });
 
     await _checkPendingSyncCount();
-    await _loadCompletedTrips();
-    await _checkAndRecoverActiveTrip();
+    await _checkActiveTrip();
   }
 
   Future<void> _checkPendingSyncCount() async {
@@ -81,17 +69,11 @@ class TripProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _loadCompletedTrips() async {
-    _completedTrips = await _storageService.getCompletedTrips();
-    notifyListeners();
-  }
-
-  Future<void> _checkAndRecoverActiveTrip() async {
+  Future<void> _checkActiveTrip() async {
     final activeTrip = await _storageService.getActiveTrip();
     if (activeTrip != null && activeTrip.status == 'active') {
       _currentTrip = activeTrip;
       _status = TripStatus.active;
-      _isRecoveredTrip = true;
 
       final elapsed = DateTime.now().difference(activeTrip.startTime);
       _tripDuration = elapsed.isNegative ? Duration.zero : elapsed;
@@ -100,11 +82,6 @@ class TripProvider extends ChangeNotifier {
       await _startLocationStream();
       notifyListeners();
     }
-  }
-
-  void dismissRecoveryBanner() {
-    _isRecoveredTrip = false;
-    notifyListeners();
   }
 
   void clearError() {
@@ -121,7 +98,7 @@ class TripProvider extends ChangeNotifier {
     try {
       final bool hasPermission = await _locationService.checkPermission();
       if (!hasPermission) {
-        _errorMessage = 'Location permission is required to start trip tracking';
+        _errorMessage = 'Location permission is required';
         _isProcessing = false;
         notifyListeners();
         return false;
@@ -137,26 +114,16 @@ class TripProvider extends ChangeNotifier {
         totalDistance: 0.0,
         currentSpeed: 0.0,
         maxSpeed: 0.0,
-        averageSpeed: 0.0,
-        totalLocations: 0,
-        rejectedLocations: 0,
-        isSynced: false,
       );
 
       _lastValidLocation = null;
       _status = TripStatus.active;
-      _isRecoveredTrip = false;
       _tripDuration = Duration.zero;
-      _lastRejectionReason = null;
 
       await _storageService.saveActiveTrip(_currentTrip!);
 
       if (_isOnline) {
-        final success = await _firebaseService.saveTripStart(_currentTrip!);
-        if (success) {
-          _currentTrip = _currentTrip!.copyWith(isSynced: true);
-          await _storageService.saveActiveTrip(_currentTrip!);
-        }
+        await _firebaseService.saveTripStart(_currentTrip!);
       }
 
       _startDurationTimer();
@@ -166,7 +133,7 @@ class TripProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _errorMessage = 'Failed to start trip: $e';
+      _errorMessage = 'Could not start trip: $e';
       _isProcessing = false;
       notifyListeners();
       return false;
@@ -185,17 +152,10 @@ class TripProvider extends ChangeNotifier {
       await _stopLocationStream();
       _stopDurationTimer();
 
-      final now = DateTime.now();
-      final double durationHours = _tripDuration.inSeconds / 3600.0;
-      final double avgSpeed = durationHours > 0
-          ? ((_currentTrip!.totalDistance / 1000.0) / durationHours)
-          : 0.0;
-
       _currentTrip = _currentTrip!.copyWith(
-        endTime: now,
+        endTime: DateTime.now(),
         status: 'completed',
         currentSpeed: 0.0,
-        averageSpeed: double.parse(avgSpeed.toStringAsFixed(1)),
       );
 
       await _storageService.saveCompletedTrip(_currentTrip!);
@@ -207,13 +167,12 @@ class TripProvider extends ChangeNotifier {
 
       _status = TripStatus.completed;
       _isProcessing = false;
-      await _loadCompletedTrips();
       await syncPendingData();
 
       notifyListeners();
       return true;
     } catch (e) {
-      _errorMessage = 'Failed to end trip: $e';
+      _errorMessage = 'Could not end trip: $e';
       _isProcessing = false;
       notifyListeners();
       return false;
@@ -226,15 +185,13 @@ class TripProvider extends ChangeNotifier {
     _lastValidLocation = null;
     _status = TripStatus.idle;
     _tripDuration = Duration.zero;
-    _isRecoveredTrip = false;
     _errorMessage = null;
-    _lastRejectionReason = null;
     notifyListeners();
   }
 
   void _startDurationTimer() {
     _durationTimer?.cancel();
-    _durationTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    _durationTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (_currentTrip != null) {
         final elapsed = DateTime.now().difference(_currentTrip!.startTime);
         _tripDuration = elapsed.isNegative ? Duration.zero : elapsed;
@@ -262,7 +219,7 @@ class TripProvider extends ChangeNotifier {
         );
       },
       onError: (e) {
-        _errorMessage = 'GPS Error: $e';
+        _errorMessage = 'Location error: $e';
         notifyListeners();
       },
     );
@@ -292,22 +249,14 @@ class TripProvider extends ChangeNotifier {
     );
 
     if (!result.isValid) {
-      _lastRejectionReason = result.rejectionReason;
-      final int newRejected = _currentTrip!.rejectedLocations + 1;
-      _currentTrip = _currentTrip!.copyWith(rejectedLocations: newRejected);
-      await _storageService.saveActiveTrip(_currentTrip!);
-      notifyListeners();
       return;
     }
-
-    _lastRejectionReason = null;
 
     final double newDistance =
         _currentTrip!.totalDistance + result.distanceMeters;
     final double updatedMaxSpeed = result.filteredSpeed > _currentTrip!.maxSpeed
         ? result.filteredSpeed
         : _currentTrip!.maxSpeed;
-    final int updatedTotalLocations = _currentTrip!.totalLocations + 1;
 
     final LocationPoint point = LocationPoint(
       tripId: _currentTrip!.tripId,
@@ -325,7 +274,9 @@ class TripProvider extends ChangeNotifier {
       totalDistance: double.parse(newDistance.toStringAsFixed(1)),
       currentSpeed: double.parse(result.filteredSpeed.toStringAsFixed(1)),
       maxSpeed: double.parse(updatedMaxSpeed.toStringAsFixed(1)),
-      totalLocations: updatedTotalLocations,
+      lastLatitude: latitude,
+      lastLongitude: longitude,
+      lastAccuracy: accuracy,
     );
 
     await _storageService.saveActiveTrip(_currentTrip!);
@@ -368,75 +319,6 @@ class TripProvider extends ChangeNotifier {
       _isSyncing = false;
       notifyListeners();
     }
-  }
-
-  Future<void> simulateLocationStep({
-    double deltaLat = 0.0005,
-    double deltaLon = 0.0005,
-    double speedKmh = 38.0,
-    double accuracy = 6.5,
-  }) async {
-    if (_status != TripStatus.active || _currentTrip == null) return;
-
-    final double baseLat = _lastValidLocation?.latitude ?? 28.6139;
-    final double baseLon = _lastValidLocation?.longitude ?? 77.2090;
-
-    final double newLat = baseLat + deltaLat;
-    final double newLon = baseLon + deltaLon;
-    final double speedMps = speedKmh / 3.6;
-
-    await processIncomingLocation(
-      latitude: newLat,
-      longitude: newLon,
-      speedMps: speedMps,
-      accuracy: accuracy,
-      timestamp: DateTime.now(),
-    );
-  }
-
-  Future<void> simulateGpsJump() async {
-    if (_status != TripStatus.active || _currentTrip == null) return;
-
-    final double baseLat = _lastValidLocation?.latitude ?? 28.6139;
-    final double baseLon = _lastValidLocation?.longitude ?? 77.2090;
-
-    await processIncomingLocation(
-      latitude: baseLat + 0.08,
-      longitude: baseLon + 0.08,
-      speedMps: 200.0,
-      accuracy: 8.0,
-      timestamp: DateTime.now(),
-    );
-  }
-
-  Future<void> simulatePoorAccuracy() async {
-    if (_status != TripStatus.active || _currentTrip == null) return;
-
-    final double baseLat = _lastValidLocation?.latitude ?? 28.6139;
-    final double baseLon = _lastValidLocation?.longitude ?? 77.2090;
-
-    await processIncomingLocation(
-      latitude: baseLat + 0.0002,
-      longitude: baseLon + 0.0002,
-      speedMps: 8.0,
-      accuracy: 75.0,
-      timestamp: DateTime.now(),
-    );
-  }
-
-  Future<void> simulateStationaryDrift() async {
-    if (_status != TripStatus.active || _currentTrip == null) return;
-
-    final double baseLat = _lastValidLocation?.latitude ?? 28.6139;
-    final double baseLon = _lastValidLocation?.longitude ?? 77.2090;
-
-    await processIncomingLocation(
-      latitude: baseLat + 0.00001,
-      longitude: baseLon + 0.00001,
-      speedMps: 0.1,
-      accuracy: 5.0,
-      timestamp: DateTime.now(),
-    );
   }
 
   @override

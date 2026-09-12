@@ -8,23 +8,21 @@ class TripModel {
   final double totalDistance;
   final double currentSpeed;
   final double maxSpeed;
-  final double averageSpeed;
-  final int totalLocations;
-  final int rejectedLocations;
-  final bool isSynced;
+  final double? lastLatitude;
+  final double? lastLongitude;
+  final double? lastAccuracy;
 
   TripModel({
     required this.tripId,
     required this.startTime,
     this.endTime,
     required this.status,
-    required this.totalDistance,
-    required this.currentSpeed,
-    required this.maxSpeed,
-    required this.averageSpeed,
-    required this.totalLocations,
-    required this.rejectedLocations,
-    this.isSynced = false,
+    this.totalDistance = 0.0,
+    this.currentSpeed = 0.0,
+    this.maxSpeed = 0.0,
+    this.lastLatitude,
+    this.lastLongitude,
+    this.lastAccuracy,
   });
 
   TripModel copyWith({
@@ -35,10 +33,9 @@ class TripModel {
     double? totalDistance,
     double? currentSpeed,
     double? maxSpeed,
-    double? averageSpeed,
-    int? totalLocations,
-    int? rejectedLocations,
-    bool? isSynced,
+    double? lastLatitude,
+    double? lastLongitude,
+    double? lastAccuracy,
   }) {
     return TripModel(
       tripId: tripId ?? this.tripId,
@@ -48,10 +45,9 @@ class TripModel {
       totalDistance: totalDistance ?? this.totalDistance,
       currentSpeed: currentSpeed ?? this.currentSpeed,
       maxSpeed: maxSpeed ?? this.maxSpeed,
-      averageSpeed: averageSpeed ?? this.averageSpeed,
-      totalLocations: totalLocations ?? this.totalLocations,
-      rejectedLocations: rejectedLocations ?? this.rejectedLocations,
-      isSynced: isSynced ?? this.isSynced,
+      lastLatitude: lastLatitude ?? this.lastLatitude,
+      lastLongitude: lastLongitude ?? this.lastLongitude,
+      lastAccuracy: lastAccuracy ?? this.lastAccuracy,
     );
   }
 
@@ -64,10 +60,9 @@ class TripModel {
       'totalDistance': totalDistance,
       'currentSpeed': currentSpeed,
       'maxSpeed': maxSpeed,
-      'averageSpeed': averageSpeed,
-      'totalLocations': totalLocations,
-      'rejectedLocations': rejectedLocations,
-      'isSynced': isSynced,
+      'lastLatitude': lastLatitude,
+      'lastLongitude': lastLongitude,
+      'lastAccuracy': lastAccuracy,
     };
   }
 
@@ -80,10 +75,9 @@ class TripModel {
       totalDistance: (map['totalDistance'] as num?)?.toDouble() ?? 0.0,
       currentSpeed: (map['currentSpeed'] as num?)?.toDouble() ?? 0.0,
       maxSpeed: (map['maxSpeed'] as num?)?.toDouble() ?? 0.0,
-      averageSpeed: (map['averageSpeed'] as num?)?.toDouble() ?? 0.0,
-      totalLocations: (map['totalLocations'] as num?)?.toInt() ?? 0,
-      rejectedLocations: (map['rejectedLocations'] as num?)?.toInt() ?? 0,
-      isSynced: map['isSynced'] ?? false,
+      lastLatitude: (map['lastLatitude'] as num?)?.toDouble(),
+      lastLongitude: (map['lastLongitude'] as num?)?.toDouble(),
+      lastAccuracy: (map['lastAccuracy'] as num?)?.toDouble(),
     );
   }
 

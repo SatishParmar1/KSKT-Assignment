@@ -1,21 +1,31 @@
 # Rider Tracking App
 
-A Flutter mobile application designed for riders to track trips from Start Trip to End Trip. It captures and displays real-time trip status, live coordinates, total distance, current speed, and maximum speed while filtering GPS noise, handling offline scenarios, syncing with Firebase Cloud Firestore, and recovering active trips across app terminations.
+A Flutter application for riders to track trips from start to finish. It tracks distance, live speed, maximum speed, and coordinates while handling GPS noise, background tracking, offline syncing, and app restarts.
 
 ---
 
-## Features
+## Setup & Run
 
-- **Trip Lifecycle:** Start and End trip actions with debounced safety and live elapsed duration counter.
-- **Live Location:** Real-time latitude and longitude tracking.
-- **Distance Calculation:** Accumulated distance calculated using the Haversine formula on validated coordinate fixes.
-- **Speed Tracking:** Real-time current speed in km/h and maximum speed tracking.
-- **Noise & Jump Filtering:** Rejection of unrealistic coordinate spikes, duplicate timestamps, poor accuracy fixes, and stationary GPS jitter.
-- **Foreground & Background Tracking:** Android Foreground Service with persistent notification and iOS background location modes.
-- **Terminated-App Recovery:** Active trip state is continuously stored in local storage and seamlessly restored upon relaunch if the app is killed by the OS or the user.
-- **Offline First & Firebase Backend:** Trip metadata and location telemetry are queued locally when offline and automatically synced to Cloud Firestore when connectivity is restored.
-- **Monochrome Minimalist UI:** Clean white, black, and gray high-contrast rider dashboard designed for outdoor visibility.
-- **Built-in Simulation & Test Tools:** Interactive panel to test GPS jumps, accuracy drops, stationary stops, and offline sync directly on emulators without leaving your desk.
+### Prerequisites
+- Flutter SDK (3.24.0 or above)
+- Android Studio or Xcode (with an emulator or real device)
+
+### Steps
+1. Get dependencies:
+   ```bash
+   flutter pub get
+   ```
+2. (Optional) Setup Firebase:
+   - Add your `google-services.json` inside `android/app/` (for Android) and `GoogleService-Info.plist` inside `ios/Runner/` (for iOS).
+   - If you run the app without Firebase files, it automatically works in local offline mode without crashing.
+3. Run the app:
+   ```bash
+   flutter run
+   ```
+4. Run tests:
+   ```bash
+   flutter test
+   ```
 
 ---
 
@@ -23,161 +33,80 @@ A Flutter mobile application designed for riders to track trips from Start Trip 
 
 ```
 lib/
-├── main.dart                      # App entry point, Firebase init & Provider configuration
+├── main.dart
 ├── models/
-│   ├── location_point.dart        # Telemetry data model matching required assignment schema
-│   └── trip_model.dart            # Trip entity (status, distance, speed, points, sync state)
+│   ├── location_point.dart
+│   └── trip_model.dart
 ├── providers/
-│   └── trip_provider.dart         # Core state management via ChangeNotifier (Provider)
+│   └── trip_provider.dart
 ├── services/
-│   ├── connectivity_service.dart  # Network connectivity monitor
-│   ├── firebase_service.dart      # Cloud Firestore integration & batch sync
-│   ├── gps_filter_service.dart    # Haversine distance, speed validation & jump filter
-│   ├── location_service.dart      # Geolocator stream & background notification config
-│   └── storage_service.dart       # SharedPreferences persistence & offline sync queue
+│   ├── connectivity_service.dart
+│   ├── firebase_service.dart
+│   ├── gps_filter_service.dart
+│   ├── location_service.dart
+│   └── storage_service.dart
 └── ui/
-    ├── screens/
-    │   ├── trip_history_screen.dart # History of completed trips
-    │   └── trip_screen.dart         # Main rider dashboard
-    └── widgets/
-        ├── metric_card.dart         # Reusable monochrome metric display card
-        ├── recovery_banner.dart     # Interrupted trip recovery notice
-        ├── simulation_sheet.dart    # Test modal for simulating edge cases
-        └── status_badge.dart        # Status pills (Online, Offline, Live, Queued)
+    └── trip_screen.dart
 ```
 
 ---
 
-## Setup and Run Instructions
+## Tracking Architecture & Technical Decisions
 
-### Prerequisites
-- Flutter SDK (version 3.24.0 or higher)
-- Dart SDK (version 3.5.0 or higher)
-- Android Studio / Xcode for running on emulators or physical devices
-
-### 1. Install Dependencies
-```bash
-flutter pub get
-```
-
-### 2. Firebase Configuration
-The application is built to use **Firebase Cloud Firestore** for backend persistence:
-1. Create a Firebase project at [Firebase Console](https://console.firebase.google.com/).
-2. Enable **Cloud Firestore** in test or production mode.
-3. Configure your app using the FlutterFire CLI:
-   ```bash
-   npm install -g firebase-tools
-   dart pub global activate flutterfire_cli
-   flutterfire configure
-   ```
-   Or place `google-services.json` inside `android/app/` and `GoogleService-Info.plist` inside `ios/Runner/`.
-
-> **Offline/Local Mode Fallback:** If Firebase configuration files are omitted during evaluation, the app automatically operates in local mode without crashing. All metrics, active trips, and history will persist locally in `SharedPreferences`, and points will queue for sync.
-
-### 3. Run the App
-```bash
-# Run on connected device or emulator
-flutter run
-
-# Run unit tests
-flutter test
-
-# Verify code analysis
-flutter analyze
-```
-
----
-
-## Tracking Architecture & Key Technical Decisions
-
-### 1. State Management (Provider)
-The application utilizes `ChangeNotifier` with `Provider`. `TripProvider` acts as the single source of truth for:
-- Current trip lifecycle states (`idle`, `active`, `completed`).
-- Live metrics (current speed, max speed, total distance, elapsed duration).
-- Connectivity state changes and pending queue management.
-- Active trip state recovery after process termination.
-
-### 2. GPS Filtering & Noise Reduction (`GpsFilterService`)
-Raw GPS data on mobile devices can produce spikes, inaccurate fixes, and stationary drift. The `GpsFilterService` enforces the following rules before accepting any location fix:
-1. **Accuracy Threshold:** Discards any location fix with horizontal accuracy $> 30.0$ meters or $\le 0$ meters.
-2. **Timestamp Validation:** Rejects fixes where $dt \le 0$ seconds to prevent backward or duplicate time events.
-3. **Haversine Distance & Derived Speed:** Calculates distance between consecutive points via the spherical Haversine formula. Derived speed is calculated as:
-   $$\text{speed} = \frac{\Delta d}{\Delta t} \times 3.6 \text{ (km/h)}$$
-4. **Jump Rejection:** If the derived speed exceeds $130\text{ km/h}$ (or if raw GPS speed exceeds realistic limits), the fix is rejected as a coordinate spike. The rejected count is recorded in telemetry.
-5. **Stationary Drift Suppression:** When waiting at traffic signals, GPS chips often report random 1-2 meter jumps. If distance is $< 2.5$ meters and speed is $< 1.5\text{ km/h}$, the location is accepted to update live coordinates, but **distance is not added** to the trip total.
-
-### 3. Offline Support & Synchronization
-- When an accepted location is captured, it is packaged as a `LocationPoint` and appended to a persistent pending list in `SharedPreferences`.
-- If the device is online and Firebase is accessible, the point is uploaded directly to Firestore:
-  `trips/{tripId}/locations/{timestamp}`
-- If offline, points accumulate in the local queue.
-- `ConnectivityService` listens to network changes. Upon reconnection, `syncPendingData()` uploads queued points in batches using Firestore's `writeBatch()`.
+- **State Management:** Uses `Provider` (`ChangeNotifier`). `TripProvider` manages the trip state, starts and stops location streams, updates the timer, and handles local and cloud syncing.
+- **GPS Noise & Jump Filter (`GpsFilterService`):**
+  - **Accuracy Filter:** Discards fixes with accuracy worse than 30 meters.
+  - **Timestamp Check:** Ensures incoming points have a positive time difference from the previous point.
+  - **Haversine Distance & Jump Rejection:** Calculates distance using the Haversine formula. If the calculated speed between two consecutive points exceeds 130 km/h, the point is treated as a GPS jump and discarded.
+  - **Stationary Jitter Suppression:** When standing still (speed < 1.5 km/h and distance < 2.5 meters), the app updates coordinates but does not add distance. This avoids artificial distance accumulation at traffic lights.
+- **Offline Support & Backend:**
+  - Every valid location point is saved locally in `SharedPreferences`.
+  - If connected to the internet and Firebase is set up, points are uploaded to Firestore under `trips/{tripId}/locations/{timestamp}`.
+  - When offline, points wait in the local queue. Once the network reconnects, `TripProvider` flushes queued points to Firebase using a batch write.
 
 ---
 
 ## Foreground, Background & Terminated Tracking
 
 ### Foreground Tracking
-- Uses `Geolocator.getPositionStream` with high accuracy and a 5-meter distance filter.
-- UI displays real-time speed, distance, coordinates, and live duration.
+- Tracks continuously via `Geolocator.getPositionStream` with high accuracy and a 5-meter distance filter.
+- UI updates distance, current speed, max speed, and live coordinates in real time.
 
 ### Background Tracking
 - **Android:**
-  - Configured with `AndroidSettings` and `ForegroundNotificationConfig`.
-  - Runs a foreground service with a persistent notification (`Rider Trip Active`), preventing the OS from killing the location listener when the app is minimized or the screen is locked.
-  - Required permissions added to `AndroidManifest.xml`:
-    `ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION`, `ACCESS_BACKGROUND_LOCATION`, `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_LOCATION`, `POST_NOTIFICATIONS`, `WAKE_LOCK`.
+  - Configured with a Foreground Service via `AndroidSettings` with `ForegroundNotificationConfig`.
+  - Displays a persistent notification while tracking is active so Android keeps the location stream running when the app is minimized or the screen is locked.
+  - Configured with `ACCESS_FINE_LOCATION`, `ACCESS_BACKGROUND_LOCATION`, `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_LOCATION`, and `POST_NOTIFICATIONS` in `AndroidManifest.xml`.
 - **iOS:**
   - Configured with `AppleSettings` (`pauseLocationUpdatesAutomatically: false`, `showBackgroundLocationIndicator: true`).
-  - Added `UIBackgroundModes` with `location` and `fetch` to `Info.plist`.
-  - Added location usage strings: `NSLocationWhenInUseUsageDescription`, `NSLocationAlwaysAndWhenInUseUsageDescription`, `NSLocationAlwaysUsageDescription`.
+  - `UIBackgroundModes` with `location` and `fetch` set in `Info.plist`.
 
-### Terminated-App Handling & Platform Limitations
-
-#### Implementation Approach:
-Whenever a valid location update occurs, the full active trip state (`TripModel` with total distance, speeds, start time, and point count) is serialized to `SharedPreferences`.
-When the application re-launches:
-1. `TripProvider.init()` inspects `StorageService.getActiveTrip()`.
-2. If an active trip exists, it automatically restores the trip state, calculates the elapsed time from the original `startTime`, restarts the foreground location stream, and presents a dismissible recovery banner to the rider.
-
-#### Platform Limitations:
-- **Android:**
-  - Standard app switching or screen locking keeps tracking active via the Foreground Service.
-  - However, if the user explicitly **Force Stops** the app from Android Settings, all foreground services are killed by the OS.
-  - Aggressive battery optimizations by specific OEMs (e.g., Xiaomi MIUI/HyperOS, Samsung OneUI, Huawei) may kill long-running foreground services unless the user manually grants "Unrestricted Battery" permissions.
-- **iOS:**
-  - When an app is swiped away / killed from the App Switcher by the user, iOS treats this as an explicit intent to stop and terminates background tasks. Location events will not be delivered until the user opens the app again.
-  - In our architecture, as soon as the rider reopens the app, the session is recovered with all previously accumulated metrics intact.
+### Terminated-App Handling & Limitations
+- **How it is handled:**
+  - Active trip state is saved to `SharedPreferences` on every location update.
+  - When the app is launched again after being killed or after a phone reboot, `TripProvider.init()` checks for an active trip.
+  - If found, it automatically restores the trip, recalculates elapsed time from the original start time, and resumes the location stream.
+- **Platform Limitations:**
+  - **Android:** If the user goes to Android Settings and taps "Force Stop", Android kills all foreground services and background execution. Some OEM skins (MIUI, ColorOS) have aggressive battery managers that can kill background services unless battery optimization is disabled for the app.
+  - **iOS:** When a user explicitly force-quits an app from the App Switcher, iOS halts background location delivery completely until the user opens the app again. Once reopened, our saved state restores the active trip.
 
 ---
 
-## Edge Cases & Testing Instructions
+## Testing Major Edge Cases
 
-You can test all critical edge cases directly using the built-in **Simulation & Test Tools** button in the app, or with emulator settings:
-
-### 1. GPS Jump / Unrealistic Spike
-- **Action:** Tap "Simulation & Test Tools" > "Simulate GPS Jump Spike (+5km instant)".
-- **Expected Result:** The spike is rejected. The "Jumps Rejected" counter increases by 1, distance does not jump, and the telemetry box shows the rejection reason.
-
-### 2. Poor GPS Accuracy
-- **Action:** Tap "Simulation & Test Tools" > "Simulate Poor Accuracy Reading (75m)".
-- **Expected Result:** The fix is rejected because accuracy exceeds 30m. The rejection counter increments.
-
-### 3. Stationary GPS Drift
-- **Action:** Tap "Simulation & Test Tools" > "Simulate Stationary Drift (Signal Stop)".
-- **Expected Result:** Live coordinates update, but total distance does not increase.
-
-### 4. Offline Mode & Auto-Sync
-- **Action:** Toggle Wi-Fi / Mobile Data off or use airplane mode. The app bar will display `OFFLINE`.
-- Accumulate points by riding or tapping "Simulate Valid Movement". A badge will show `N QUEUED`.
-- Turn Wi-Fi / Mobile Data back on. The app bar will switch to `ONLINE` and flush the queued points to Firebase Firestore automatically.
-
-### 5. App Process Termination / Crash Recovery
-- **Action:** Start a trip, let it track for a few seconds.
-- Force kill the app (swipe away from recent apps or kill process via terminal/debugger).
-- Reopen the app.
-- **Expected Result:** The active trip is restored with its original Trip ID, accumulated distance, max speed, and elapsed time. A recovery banner appears: *"Active trip recovered from previous session. Tracking resumed."*
-
-### 6. Duplicate Submission Protection
-- **Action:** Rapidly tap the "START TRIP" or "END TRIP" buttons.
-- **Expected Result:** Button debouncing (`isProcessing` flag) prevents duplicate trip creations or concurrent Firestore write collisions.
+1. **GPS Jumps / Unrealistic Speed:**
+   - On an emulator, use the Extended Controls > Location tab to jump coordinates by several kilometers in 1 second.
+   - The app's filter calculates the derived speed (> 130 km/h) and discards the reading without adding false distance.
+2. **Offline Mode & Reconnection:**
+   - Turn on Airplane mode or turn off Wi-Fi/Mobile Data while a trip is active.
+   - The status bar changes to "Offline". Points are stored in local storage.
+   - Turn Wi-Fi/Data back on. The status changes to "Online" and queued points are uploaded to Firestore.
+3. **App Killed / Device Reboot:**
+   - Start a trip.
+   - Swipe away the app from recent apps (or kill the process in Android Studio / Terminal).
+   - Reopen the app. The trip is restored in progress with the original trip ID, distance, and elapsed time.
+4. **Stationary GPS Drift:**
+   - Keep the phone stationary on a table or test at 0 km/h in emulator.
+   - Minor GPS coordinate jitter does not inflate the total distance travelled.
+5. **Duplicate Button Clicks:**
+   - Tapping "Start Trip" or "End Trip" repeatedly is blocked by an internal `isProcessing` flag to prevent duplicate trips or concurrent network requests.

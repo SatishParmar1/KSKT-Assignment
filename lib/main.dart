@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'providers/trip_provider.dart';
-import 'ui/screens/trip_screen.dart';
+import 'ui/trip_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,20 +26,16 @@ class RiderTrackingApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           useMaterial3: true,
-          scaffoldBackgroundColor: const Color(0xFFF9FAFB),
+          scaffoldBackgroundColor: Colors.white,
           colorScheme: const ColorScheme.light(
-            primary: Color(0xFF111827),
+            primary: Colors.black,
             onPrimary: Colors.white,
             surface: Colors.white,
-            onSurface: Color(0xFF111827),
+            onSurface: Colors.black,
           ),
           appBarTheme: const AppBarTheme(
             backgroundColor: Colors.white,
-            foregroundColor: Color(0xFF111827),
-            elevation: 0,
-          ),
-          cardTheme: const CardThemeData(
-            color: Colors.white,
+            foregroundColor: Colors.black,
             elevation: 0,
           ),
         ),
