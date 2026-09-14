@@ -3,6 +3,9 @@ import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
 
 class DefaultFirebaseOptions {
+  static const String rtdbUrl =
+      'https://assignment-kskt-default-rtdb.firebaseio.com';
+
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
       return web;
@@ -33,6 +36,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '834397379612',
     projectId: 'assignment-kskt',
     authDomain: 'assignment-kskt.firebaseapp.com',
+    databaseURL: rtdbUrl,
     storageBucket: 'assignment-kskt.firebasestorage.app',
     measurementId: 'G-DR4PMJ3XP3',
   );
@@ -42,6 +46,7 @@ class DefaultFirebaseOptions {
     appId: '1:834397379612:android:14b2d1280a760c75f113d9',
     messagingSenderId: '834397379612',
     projectId: 'assignment-kskt',
+    databaseURL: rtdbUrl,
     storageBucket: 'assignment-kskt.firebasestorage.app',
   );
 
@@ -50,6 +55,7 @@ class DefaultFirebaseOptions {
     appId: '1:834397379612:ios:fc76b463e0e9dabef113d9',
     messagingSenderId: '834397379612',
     projectId: 'assignment-kskt',
+    databaseURL: rtdbUrl,
     storageBucket: 'assignment-kskt.firebasestorage.app',
     iosBundleId: 'com.example.ksktAgromate',
   );
@@ -59,6 +65,7 @@ class DefaultFirebaseOptions {
     appId: '1:834397379612:ios:fc76b463e0e9dabef113d9',
     messagingSenderId: '834397379612',
     projectId: 'assignment-kskt',
+    databaseURL: rtdbUrl,
     storageBucket: 'assignment-kskt.firebasestorage.app',
     iosBundleId: 'com.example.ksktAgromate',
   );
@@ -69,6 +76,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '834397379612',
     projectId: 'assignment-kskt',
     authDomain: 'assignment-kskt.firebaseapp.com',
+    databaseURL: rtdbUrl,
     storageBucket: 'assignment-kskt.firebasestorage.app',
     measurementId: 'G-NL59JL2J3W',
   );

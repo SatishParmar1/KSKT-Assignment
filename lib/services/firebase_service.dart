@@ -1,8 +1,9 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/foundation.dart';
 import '../models/trip_model.dart';
 import '../models/location_point.dart';
+import '../firebase_options.dart';
 
 class FirebaseService {
   bool get isAvailable {
@@ -13,18 +14,28 @@ class FirebaseService {
     }
   }
 
-  FirebaseFirestore? get _firestore {
+  FirebaseDatabase? get _database {
     if (!isAvailable) return null;
-    return FirebaseFirestore.instance;
+    try {
+      return FirebaseDatabase.instanceFor(
+        app: Firebase.app(),
+        databaseURL: DefaultFirebaseOptions.rtdbUrl,
+      );
+    } catch (_) {
+      try {
+        return FirebaseDatabase.instance;
+      } catch (_) {
+        return null;
+      }
+    }
   }
 
   Future<bool> saveTrip(TripModel trip) async {
-    if (!isAvailable) return false;
+    if (!isAvailable || _database == null) return false;
     try {
-      await _firestore!
-          .collection('trips')
-          .doc(trip.tripId)
-          .set(trip.toMap(), SetOptions(merge: true))
+      await _database!
+          .ref('trips/${trip.tripId}')
+          .update(trip.toMap())
           .timeout(const Duration(seconds: 8));
       return true;
     } catch (e) {
@@ -34,15 +45,12 @@ class FirebaseService {
   }
 
   Future<bool> uploadLocation(LocationPoint point) async {
-    if (!isAvailable) return false;
+    if (!isAvailable || _database == null) return false;
     try {
-      final String docId =
+      final String key =
           point.timestamp.millisecondsSinceEpoch.toString();
-      await _firestore!
-          .collection('trips')
-          .doc(point.tripId)
-          .collection('locations')
-          .doc(docId)
+      await _database!
+          .ref('trips/${point.tripId}/locations/$key')
           .set(point.toMap())
           .timeout(const Duration(seconds: 8));
       return true;
@@ -53,18 +61,18 @@ class FirebaseService {
   }
 
   Future<bool> syncBatchLocations(List<LocationPoint> points) async {
-    if (!isAvailable || points.isEmpty) return false;
+    if (!isAvailable || _database == null || points.isEmpty) return false;
     try {
-      final batch = _firestore!.batch();
+      final Map<String, dynamic> updates = {};
       for (final point in points) {
-        final docRef = _firestore!
-            .collection('trips')
-            .doc(point.tripId)
-            .collection('locations')
-            .doc(point.timestamp.millisecondsSinceEpoch.toString());
-        batch.set(docRef, point.toMap());
+        final String key =
+            point.timestamp.millisecondsSinceEpoch.toString();
+        updates['trips/${point.tripId}/locations/$key'] = point.toMap();
       }
-      await batch.commit().timeout(const Duration(seconds: 12));
+      await _database!
+          .ref()
+          .update(updates)
+          .timeout(const Duration(seconds: 12));
       return true;
     } catch (e) {
       debugPrint('Firebase syncBatchLocations error: $e');
@@ -73,15 +81,15 @@ class FirebaseService {
   }
 
   Future<TripModel?> getTrip(String tripId) async {
-    if (!isAvailable) return null;
+    if (!isAvailable || _database == null) return null;
     try {
-      final snapshot = await _firestore!
-          .collection('trips')
-          .doc(tripId)
+      final snapshot = await _database!
+          .ref('trips/$tripId')
           .get()
           .timeout(const Duration(seconds: 8));
-      if (snapshot.exists && snapshot.data() != null) {
-        return TripModel.fromMap(snapshot.data()!);
+      if (snapshot.exists && snapshot.value != null) {
+        final data = Map<String, dynamic>.from(snapshot.value as Map);
+        return TripModel.fromMap(data);
       }
       return null;
     } catch (e) {
