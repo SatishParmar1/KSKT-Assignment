@@ -38,27 +38,23 @@ The objective of this assignment is to build an accurate, robust rider tracking 
 
 ## Visuals & Firebase Database Screenshots
 
-The `assets/screenshots/` directory contains visual proof of the application interface, the Firebase Cloud Firestore database schema, and live stored trips:
+### 1. Live Firebase Cloud Firestore Database
+Below is the live Firestore console screenshot from our project showing multiple trips created and synced (`TRIP-1789200271593`, `TRIP-1789204899854`, `TRIP-1789360488938`, `TRIP-1789361209649`, `TRIP-1789361248583`, `TRIP-1789361348589`, `TRIP-1789362371731`, `TRIP-1789362717564`, `TRIP-1789362822276`), showing the trip document attributes and the nested `locations` subcollection:
 
-### 1. App Interface & Rider Dashboard
-The clean, high-contrast monochrome UI designed for outdoor visibility:
-![App Dashboard](assets/screenshots/app_dashboard.png)
+![Firebase Cloud Firestore Live Database Data](assets/screenshots/firebase_db_data_image.png)
 
-### 2. Firebase Cloud Firestore — `trips` Collection
-Showing multiple completed and in-progress trips stored directly in Firestore:
-![Firestore Trips Collection](assets/screenshots/firebase_trips_collection.png)
-
-### 3. Trip Document Details
-Showing trip metadata, distance, duration, current speed, max speed, and sync status:
-![Firestore Trip Document Details](assets/screenshots/firebase_trip_details.png)
-
-### 4. Location Telemetry Subcollection (`/trips/{tripId}/locations`)
-Showing real-time location updates matching the technical assignment payload format:
-![Firestore Locations Subcollection](assets/screenshots/firebase_locations_subcollection.png)
-
-### 5. Firestore Security Rules Configuration
-Configured to allow read and write access for mobile tracking:
-![Firestore Security Rules](assets/screenshots/firebase_rules.png)
+### 2. Firestore Document Fields & Telemetry Structure
+As shown in the console screenshot above, each trip document contains:
+- `currentSpeed`: Current rider speed (`0` km/h at stop).
+- `endTime`: ISO-8601 formatted trip completion time (`"2026-09-14T10:43:58.816622"`).
+- `isSynced`: Cloud synchronization status (`true`).
+- `lastAccuracy`: Real-time GPS accuracy in meters (`16.25m`).
+- `lastLatitude` & `lastLongitude`: Final GPS coordinate fix (`26.8830976, 75.7996287`).
+- `maxSpeed`: Maximum recorded valid speed for the trip.
+- `startTime`: ISO-8601 formatted trip start time (`"2026-09-14T10:43:42.276058"`).
+- `status`: Lifecycle state (`"completed"` or `"active"`).
+- `totalDistance`: Accumulated validated distance in meters.
+- `locations`: Subcollection containing every individual accepted GPS fix with timestamp, speed, and accuracy matching the assignment payload.
 
 ---
 
