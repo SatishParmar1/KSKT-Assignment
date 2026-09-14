@@ -80,6 +80,25 @@ class StorageService {
     await prefs.setStringList(keyCompletedTrips, list);
   }
 
+  Future<void> updateCompletedTripSync(String tripId, bool isSynced) async {
+    final prefs = await SharedPreferences.getInstance();
+    final List<String> list = prefs.getStringList(keyCompletedTrips) ?? [];
+    final List<String> updated = [];
+    for (final item in list) {
+      try {
+        final trip = TripModel.fromJson(item);
+        if (trip.tripId == tripId) {
+          updated.add(trip.copyWith(isSynced: isSynced).toJson());
+        } else {
+          updated.add(item);
+        }
+      } catch (_) {
+        updated.add(item);
+      }
+    }
+    await prefs.setStringList(keyCompletedTrips, updated);
+  }
+
   Future<List<TripModel>> getCompletedTrips() async {
     final prefs = await SharedPreferences.getInstance();
     final List<String> list = prefs.getStringList(keyCompletedTrips) ?? [];

@@ -11,6 +11,7 @@ class TripModel {
   final double? lastLatitude;
   final double? lastLongitude;
   final double? lastAccuracy;
+  final bool isSynced;
 
   TripModel({
     required this.tripId,
@@ -23,6 +24,7 @@ class TripModel {
     this.lastLatitude,
     this.lastLongitude,
     this.lastAccuracy,
+    this.isSynced = false,
   });
 
   TripModel copyWith({
@@ -36,6 +38,7 @@ class TripModel {
     double? lastLatitude,
     double? lastLongitude,
     double? lastAccuracy,
+    bool? isSynced,
   }) {
     return TripModel(
       tripId: tripId ?? this.tripId,
@@ -48,6 +51,7 @@ class TripModel {
       lastLatitude: lastLatitude ?? this.lastLatitude,
       lastLongitude: lastLongitude ?? this.lastLongitude,
       lastAccuracy: lastAccuracy ?? this.lastAccuracy,
+      isSynced: isSynced ?? this.isSynced,
     );
   }
 
@@ -63,6 +67,7 @@ class TripModel {
       'lastLatitude': lastLatitude,
       'lastLongitude': lastLongitude,
       'lastAccuracy': lastAccuracy,
+      'isSynced': isSynced,
     };
   }
 
@@ -78,6 +83,7 @@ class TripModel {
       lastLatitude: (map['lastLatitude'] as num?)?.toDouble(),
       lastLongitude: (map['lastLongitude'] as num?)?.toDouble(),
       lastAccuracy: (map['lastAccuracy'] as num?)?.toDouble(),
+      isSynced: map['isSynced'] ?? false,
     );
   }
 

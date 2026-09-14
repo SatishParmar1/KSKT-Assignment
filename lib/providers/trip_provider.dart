@@ -61,6 +61,7 @@ class TripProvider extends ChangeNotifier {
 
     await _checkPendingSyncCount();
     await _checkActiveTrip();
+    await syncPendingData();
   }
 
   Future<void> _checkPendingSyncCount() async {
@@ -114,6 +115,7 @@ class TripProvider extends ChangeNotifier {
         totalDistance: 0.0,
         currentSpeed: 0.0,
         maxSpeed: 0.0,
+        isSynced: false,
       );
 
       _lastValidLocation = null;
@@ -123,7 +125,11 @@ class TripProvider extends ChangeNotifier {
       await _storageService.saveActiveTrip(_currentTrip!);
 
       if (_isOnline) {
-        await _firebaseService.saveTripStart(_currentTrip!);
+        final success = await _firebaseService.saveTrip(_currentTrip!);
+        if (success) {
+          _currentTrip = _currentTrip!.copyWith(isSynced: true);
+          await _storageService.saveActiveTrip(_currentTrip!);
+        }
       }
 
       _startDurationTimer();
@@ -162,7 +168,13 @@ class TripProvider extends ChangeNotifier {
       await _storageService.clearActiveTrip();
 
       if (_isOnline) {
-        await _firebaseService.saveTripEnd(_currentTrip!);
+        final success = await _firebaseService.saveTrip(_currentTrip!);
+        if (success) {
+          await _storageService.updateCompletedTripSync(
+            _currentTrip!.tripId,
+            true,
+          );
+        }
       }
 
       _status = TripStatus.completed;
@@ -300,18 +312,25 @@ class TripProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final pendingPoints = await _storageService.getPendingLocations();
-      if (pendingPoints.isEmpty) {
-        _pendingSyncCount = 0;
-        _isSyncing = false;
-        notifyListeners();
-        return;
+      final completedTrips = await _storageService.getCompletedTrips();
+      for (final trip in completedTrips) {
+        if (!trip.isSynced) {
+          final success = await _firebaseService.saveTrip(trip);
+          if (success) {
+            await _storageService.updateCompletedTripSync(trip.tripId, true);
+          }
+        }
       }
 
-      final success =
-          await _firebaseService.syncBatchLocations(pendingPoints);
-      if (success) {
-        await _storageService.removePendingLocations(pendingPoints);
+      final pendingPoints = await _storageService.getPendingLocations();
+      if (pendingPoints.isNotEmpty) {
+        final success =
+            await _firebaseService.syncBatchLocations(pendingPoints);
+        if (success) {
+          await _storageService.removePendingLocations(pendingPoints);
+          _pendingSyncCount = 0;
+        }
+      } else {
         _pendingSyncCount = 0;
       }
     } catch (_) {
