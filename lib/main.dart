@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
+import 'firebase_options.dart';
 import 'providers/trip_provider.dart';
 import 'ui/trip_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+
+
   try {
-    await Firebase.initializeApp();
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
   } catch (_) {}
 
   runApp(const RiderTrackingApp());

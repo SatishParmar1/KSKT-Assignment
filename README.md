@@ -61,8 +61,8 @@ lib/
   - **Stationary Jitter Suppression:** When standing still (speed < 1.5 km/h and distance < 2.5 meters), the app updates coordinates but does not add distance. This avoids artificial distance accumulation at traffic lights.
 - **Offline Support & Backend:**
   - Every valid location point is saved locally in `SharedPreferences`.
-  - If connected to the internet and Firebase is set up, points are uploaded to Firestore under `trips/{tripId}/locations/{timestamp}`.
-  - When offline, points wait in the local queue. Once the network reconnects, `TripProvider` flushes queued points to Firebase using a batch write.
+  - If connected to the internet and Firebase is set up, points are uploaded to Firebase Realtime Database under `trips/{tripId}/locations/{timestamp}`.
+  - When offline, points wait in the local queue. Once the network reconnects, `TripProvider` flushes queued points to Firebase.
 
 ---
 
@@ -100,7 +100,7 @@ lib/
 2. **Offline Mode & Reconnection:**
    - Turn on Airplane mode or turn off Wi-Fi/Mobile Data while a trip is active.
    - The status bar changes to "Offline". Points are stored in local storage.
-   - Turn Wi-Fi/Data back on. The status changes to "Online" and queued points are uploaded to Firestore.
+   - Turn Wi-Fi/Data back on. The status changes to "Online" and queued points are uploaded to Firebase.
 3. **App Killed / Device Reboot:**
    - Start a trip.
    - Swipe away the app from recent apps (or kill the process in Android Studio / Terminal).

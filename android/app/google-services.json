@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "834397379612",
+    "project_id": "assignment-kskt",
+    "storage_bucket": "assignment-kskt.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:834397379612:android:14b2d1280a760c75f113d9",
+        "android_client_info": {
+          "package_name": "com.example.kskt_agromate"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC35NrdkAAqlMlbDbmvcROdsR_mx0LSDn4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
