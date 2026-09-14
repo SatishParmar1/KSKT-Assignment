@@ -60,21 +60,6 @@ Every validated location update during an active trip is stored under this subco
 }
 ```
 
-### 3. Firestore Security Rules
-To allow the mobile app to write trip data without requiring a user login screen, the following Firestore rules are applied:
-
-```javascript
-rules_version = '2';
-
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if true;
-    }
-  }
-}
-```
-
 ---
 
 ## Project Structure
