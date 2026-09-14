@@ -61,8 +61,8 @@ lib/
   - **Stationary Jitter Suppression:** When standing still (speed < 1.5 km/h and distance < 2.5 meters), the app updates coordinates but does not add distance. This avoids artificial distance accumulation at traffic lights.
 - **Offline Support & Backend:**
   - Every valid location point is saved locally in `SharedPreferences`.
-  - If connected to the internet and Firebase is set up, points are uploaded to Firebase Realtime Database under `trips/{tripId}/locations/{timestamp}`.
-  - When offline, points wait in the local queue. Once the network reconnects, `TripProvider` flushes queued points to Firebase.
+  - If connected to the internet and Firebase is set up, points are uploaded to Firestore under `trips/{tripId}/locations/{timestamp}`.
+  - When offline, points wait in the local queue. Once the network reconnects, `TripProvider` flushes queued points to Firebase using batch writes.
 
 ---
 
